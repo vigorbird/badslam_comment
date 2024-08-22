@@ -73,6 +73,7 @@ struct MergeKeyframeDistance {
 };
 
 
+//主要是向cuda申请一些内存空间！！！！！
 DirectBA::DirectBA(
     int max_surfel_count,
     float raw_to_float_depth,
@@ -105,12 +106,12 @@ DirectBA::DirectBA(
           /*a_rows*/ 4 + 1),
       render_window_(render_window),
       global_T_anchor_frame_(global_T_anchor_frame) {
+
   depth_params_.a = 0;
-  cfactor_buffer_.reset(new CUDABuffer<float>(
-      (depth_camera_.height() - 1) / sparse_surfel_cell_size + 1,
-      (depth_camera_.width() - 1) / sparse_surfel_cell_size + 1));
+  cfactor_buffer_.reset(new CUDABuffer<float>( (depth_camera_.height() - 1) / sparse_surfel_cell_size + 1,
+                                                (depth_camera_.width() - 1) / sparse_surfel_cell_size + 1));
   cfactor_buffer_->Clear(0, /*stream*/ 0);
-  cudaDeviceSynchronize();
+  cudaDeviceSynchronize();//cuda自带的api！！！！！！
   
   depth_params_.cfactor_buffer = cfactor_buffer_->ToCUDA();
   depth_params_.raw_to_float_depth = raw_to_float_depth;
@@ -161,7 +162,7 @@ DirectBA::DirectBA(
   cudaEventCreate(&ba_final_surfel_merge_post_event_);
   cudaEventCreate(&ba_pcg_pre_event_);
   cudaEventCreate(&ba_pcg_post_event_);
-}
+}//end function DirectBA构造函数！！！！！！！
 
 DirectBA::~DirectBA() {
   cudaEventDestroy(ba_surfel_creation_pre_event_);
@@ -335,7 +336,7 @@ void DirectBA::MergeKeyframes(
   if (loop_detector) {
     loop_detector->UnlockDetectorMutex();
   }
-}
+}//end function MergeKeyframes!!!
 
 void DirectBA::CreateSurfelsForKeyframe(
     cudaStream_t stream,
@@ -424,6 +425,7 @@ void DirectBA::BundleAdjustment(
       int pcg_max_inner_iterations,
       int pcg_max_keyframes,
       std::function<bool (int)> progress_function) {
+
   if (optimize_depth_intrinsics && !use_depth_residuals_) {
     LOG(WARNING) << "optimize_depth_intrinsics set to true, but use_depth_residuals_ set to false. Depth intrinsics will not be optimized.";
     optimize_depth_intrinsics = false;
@@ -433,7 +435,7 @@ void DirectBA::BundleAdjustment(
     optimize_color_intrinsics = false;
   }
   
-  if (use_pcg) {
+  if (use_pcg) {//默认不进入这个条件！！！！
     BundleAdjustmentPCG(
         stream, optimize_depth_intrinsics, optimize_color_intrinsics,
         do_surfel_updates, optimize_poses, optimize_geometry,

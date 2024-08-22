@@ -50,6 +50,7 @@
 
 namespace vis {
 
+//BadSlam构造函数！！！！！
 BadSlam::BadSlam(
     const BadSlamConfig& config,
     RGBDVideo<Vec3u8, u16>* rgbd_video,
@@ -70,12 +71,13 @@ BadSlam::BadSlam(
   valid_ = true;
   
   // Initialize CUDA stream(s).
+  //获取cuda stream流的优先级允许范围
   int stream_priority_low, stream_priority_high;
-  cudaDeviceGetStreamPriorityRange(&stream_priority_low, &stream_priority_high);
+  cudaDeviceGetStreamPriorityRange(&stream_priority_low, &stream_priority_high);//cuda自带的函数
   if (stream_priority_low == stream_priority_high) {
     LOG(WARNING) << "Stream priorities are not supported.";
   }
-  cudaStreamCreateWithPriority(&stream_, cudaStreamDefault, stream_priority_high);
+  cudaStreamCreateWithPriority(&stream_, cudaStreamDefault, stream_priority_high);//cuda自带的函数
   
   // Allocate CUDA buffers.
   int depth_width = rgbd_video->depth_camera()->width();
@@ -84,7 +86,7 @@ BadSlam::BadSlam(
   int color_width = rgbd_video->color_camera()->width();
   int color_height = rgbd_video->color_camera()->height();
   
-  depth_buffer_.reset(new CUDABuffer<u16>(depth_height, depth_width));
+  depth_buffer_.reset(new CUDABuffer<u16>(depth_height, depth_width));//CUDABuffer是作者自己实现的一个类，不是cuda自身带有的函数
   filtered_depth_buffer_A_.reset(new CUDABuffer<u16>(depth_height, depth_width));
   filtered_depth_buffer_B_.reset(new CUDABuffer<u16>(depth_height, depth_width));
   normals_buffer_.reset(new CUDABuffer<u16>(depth_height, depth_width));
@@ -100,12 +102,13 @@ BadSlam::BadSlam(
       /*use_normalized_coordinates*/ false,
       &color_texture_);
   
+  //作者自己定义的函数！！！！
   ComputeMinMaxDepthCUDA_InitializeBuffers(
       &min_max_depth_init_buffer_,
       &min_max_depth_result_buffer_);
   
   // Allocate CUDA events.
-  cudaEventCreate(&upload_and_filter_pre_event_);
+  cudaEventCreate(&upload_and_filter_pre_event_);//cuda自带的函数！！！
   cudaEventCreate(&upload_and_filter_post_event_);
   cudaEventCreate(&odometry_pre_event_);
   cudaEventCreate(&odometry_post_event_);
@@ -122,6 +125,9 @@ BadSlam::BadSlam(
     valid_ = false;
     return;
   }
+
+  //非常重要的函数！！！！！！！！！！！！！！！！！！！
+  //已面做的也只是向cuda申请一些内存空间
   direct_ba_.reset(new DirectBA(
       config.max_surfel_count,
       config.raw_to_float_depth,
@@ -164,21 +170,28 @@ BadSlam::BadSlam(
           config.parallel_loop_detection));
     }
   }
-  
+
+  // /默认进入这个条件！！！！
   if (config.parallel_ba) {
     // Start a separate thread for bundle adjustment.
-    RestartBAThread();
+    RestartBAThread();//非常重要的函数！！！！！！！！！
   }
-}
+}//badslam构造函数结束
+
+
+
+
+
+
 
 void BadSlam::ProcessFrame(int frame_index, bool force_keyframe) {
   // Get the images. This should be before starting the "without I/O" timer
   // since it can lead to the images being loaded from disk (in case they are
   // not cached yet).
-  const Image<Vec3u8>* rgb_image =
-      rgbd_video_->color_frame_mutable(frame_index)->GetImage().get();
+  //根据frame_index获取得到对应的rgb图像
+  const Image<Vec3u8>* rgb_image =  rgbd_video_->color_frame_mutable(frame_index)->GetImage().get();
   /*const shared_ptr<Image<u16>>& depth_image =*/
-      rgbd_video_->depth_frame_mutable(frame_index)->GetImage();
+  rgbd_video_->depth_frame_mutable(frame_index)->GetImage();
   
   // After I/O is done, start the "no I/O" frame timer.
   frame_timer_.Start();
@@ -188,7 +201,7 @@ void BadSlam::ProcessFrame(int frame_index, bool force_keyframe) {
   
   // Pre-process the RGB-D frame.
   shared_ptr<Image<u16>> final_cpu_depth_map;
-  PreprocessFrame(frame_index, &final_depth_buffer_, &final_cpu_depth_map);
+  PreprocessFrame(frame_index, &final_depth_buffer_, &final_cpu_depth_map);//非常重要的函数，对原始的rgb图像和深度图做预处理！！！！！！！！
   
   // Estimate the frame's pose (unless it is the first frame).
   pose_estimated_ = false;
@@ -199,15 +212,14 @@ void BadSlam::ProcessFrame(int frame_index, bool force_keyframe) {
   
   // Use a very basic keyframe selection strategy: regularly select one
   // keyframe every keyframe_interval frames.
-  bool create_keyframe =
-      force_keyframe ||
-      ((frame_index - config_.start_frame) % config_.keyframe_interval == 0);
+  //作者这里的关键帧策略非常简单，就是每隔几个帧是一个关键帧
+  bool create_keyframe = force_keyframe || ((frame_index - config_.start_frame) % config_.keyframe_interval == 0);
   
   if (create_keyframe) {
     CreateKeyframe(frame_index,
                    rgb_image,
                    final_cpu_depth_map,
-                   *final_depth_buffer_);
+                   *final_depth_buffer_);//非常重要的函数！！！！！！
   }
   
   keyframe_created_ = create_keyframe;
@@ -245,8 +257,10 @@ void BadSlam::ProcessFrame(int frame_index, bool force_keyframe) {
             (bundle_adjustment_counter % config_.intrinsics_optimization_interval == 0)));
       bool optimize_color_intrinsics = optimize_depth_intrinsics;
       
+      //默认进入这个条件！
       if (config_.parallel_ba) {
         // Signal to the BA thread to start BA iterations
+        //搜索 BadSlam::StartParallelIterations(
         StartParallelIterations(
             num_planned_ba_iterations_,
             optimize_depth_intrinsics,
@@ -280,7 +294,7 @@ void BadSlam::ProcessFrame(int frame_index, bool force_keyframe) {
       }
     }
   }
-}
+}//end function ProcessFrame
 
 BadSlam::~BadSlam() {
   if (ba_thread_) {
@@ -537,7 +551,7 @@ void BadSlam::RunBundleAdjustment(
   base_kf_global_T_frame_ = base_kf_->global_T_frame();
   
   PrintGPUMemoryUsage();
-}
+}//end function RunBundleAdjustment
 
 void BadSlam::ClearMotionModel(int current_frame_index) {
   // Find the last keyframe
@@ -640,10 +654,11 @@ void BadSlam::AppendQueuedKeyframesToVisualization(
   }
 }
 
+//
 void BadSlam::PreprocessFrame(
     int frame_index,
-    CUDABuffer<u16>** final_depth_buffer,
-    shared_ptr<Image<u16>>* final_cpu_depth_map) {
+    CUDABuffer<u16>** final_depth_buffer,//输出变量
+    shared_ptr<Image<u16>>* final_cpu_depth_map) {//输出变量
   cudaEventRecord(upload_and_filter_pre_event_, stream_);
   
   // Perform median filtering and densification.
@@ -654,7 +669,8 @@ void BadSlam::PreprocessFrame(
   if (!final_cpu_depth_map) {
     final_cpu_depth_map = &temp_depth_map_3;
   }
-  *final_cpu_depth_map = rgbd_video_->depth_frame_mutable(frame_index)->GetImage();
+  *final_cpu_depth_map = rgbd_video_->depth_frame_mutable(frame_index)->GetImage();//获取深度图像
+  //默认是不会进入这个条件的
   for (int iteration = 0; iteration < config_.median_filter_and_densify_iterations; ++ iteration) {
     shared_ptr<Image<u16>> target_depth_map = (final_cpu_depth_map->get() == temp_depth_map.get()) ? temp_depth_map_2 : temp_depth_map;
     
@@ -665,8 +681,8 @@ void BadSlam::PreprocessFrame(
   }
   
   // Upload the depth and color images to the GPU.
-  if (config_.pyramid_level_for_depth == 0) {
-    depth_buffer_->UploadAsync(stream_, **final_cpu_depth_map);
+  if (config_.pyramid_level_for_depth == 0) {//默认进入这个条件
+    depth_buffer_->UploadAsync(stream_, **final_cpu_depth_map);//将深度图放置到gpu中
   } else {
     if (config_.median_filter_and_densify_iterations > 0) {
       LOG(FATAL) << "Simultaneous downscaling and median filtering of depth maps is not implemented.";
@@ -678,9 +694,8 @@ void BadSlam::PreprocessFrame(
   }
   
   if (config_.pyramid_level_for_color == 0) {
-    const Image<Vec3u8>* rgb_image =
-        rgbd_video_->color_frame_mutable(frame_index)->GetImage().get();
-    rgb_buffer_->UploadAsync(stream_, *reinterpret_cast<const Image<uchar3>*>(rgb_image));
+    const Image<Vec3u8>* rgb_image = rgbd_video_->color_frame_mutable(frame_index)->GetImage().get();
+    rgb_buffer_->UploadAsync(stream_, *reinterpret_cast<const Image<uchar3>*>(rgb_image));//默认也是进入条件，将rgb图像上传到gpu中
   } else {
     rgb_buffer_->UploadAsync(stream_, *reinterpret_cast<const Image<uchar3>*>(
         ImagePyramid(rgbd_video_->color_frame_mutable(frame_index).get(),
@@ -689,12 +704,14 @@ void BadSlam::PreprocessFrame(
   }
   
   // Perform color image preprocessing.
+  //搜索
   ComputeBrightnessCUDA(
       stream_,
       rgb_buffer_->ToCUDA(),
       &color_buffer_->ToCUDA());
   
   // Perform depth map preprocessing.
+  //搜索 BilateralFilteringAndDepthCutoffCUDA实现
   BilateralFilteringAndDepthCutoffCUDA(
       stream_,
       config_.bilateral_filter_sigma_xy,
@@ -713,6 +730,7 @@ void BadSlam::PreprocessFrame(
   DepthParameters depth_params = direct_ba_->depth_params_no_lock();
   direct_ba_->Unlock();
   
+  //搜索 ComputeNormalsCUDA实现
   ComputeNormalsCUDA(
       stream_,
       CreatePixelCenterUnprojector(depth_camera),
@@ -751,6 +769,7 @@ void BadSlam::PreprocessFrame(
   // TODO: As a performance optimization, the radius buffer should not be
   //       computed for frames that will not be keyframes. Only the isolated
   //       pixel removal should (perhaps?) be done.
+  //搜索  ComputePointRadiiAndRemoveIsolatedPixelsCUDA实现
   ComputePointRadiiAndRemoveIsolatedPixelsCUDA(
       stream_,
       CreatePixelCenterUnprojector(depth_camera),
@@ -762,7 +781,7 @@ void BadSlam::PreprocessFrame(
   cudaEventRecord(upload_and_filter_post_event_, stream_);
   
   *final_depth_buffer = filtered_depth_buffer_A_.get();
-}
+}//end function procecssframe
 
 void BadSlam::PredictFramePose(
     SE3f* base_kf_tr_frame_initial_estimate,
@@ -959,6 +978,7 @@ shared_ptr<Keyframe> BadSlam::CreateKeyframe(
     const Image<Vec3u8>* rgb_image,
     const shared_ptr<Image<u16>>& depth_image,
     const CUDABuffer<u16>& depth_buffer) {
+
   // Merge keyframes if not enough free memory left.
   constexpr u32 kApproxKeyframeSize = 4 * 1024 * 1024;
   size_t free_bytes;
@@ -967,7 +987,7 @@ shared_ptr<Keyframe> BadSlam::CreateKeyframe(
   if (free_bytes < static_cast<usize>(config_.min_free_gpu_memory_mb) * 1024 * 1024 + kApproxKeyframeSize) {
     LOG(WARNING) << "The available GPU memory becomes low. Merging keyframes now, but be aware that this has received little testing and may lead to instability.";
     direct_ba_->Lock();
-    direct_ba_->MergeKeyframes(stream_, loop_detector_.get());
+    direct_ba_->MergeKeyframes(stream_, loop_detector_.get());//非常重要的函数！！！！！！！
     direct_ba_->Unlock();
   }
   
@@ -1028,6 +1048,7 @@ shared_ptr<Keyframe> BadSlam::CreateKeyframe(
   }
   
   int keyframes_added;
+  //默认进入这个条件！！！！！
   if (config_.parallel_ba) {
     // If bundle adjustment is running in parallel, place the keyframe
     // in a queue from which it will be added later.
@@ -1037,17 +1058,20 @@ shared_ptr<Keyframe> BadSlam::CreateKeyframe(
     cudaEventCreate(&keyframe_event, cudaEventDisableTiming);
     cudaEventRecord(keyframe_event, stream_);
     queued_keyframes_events_.push_back(keyframe_event);
-    queued_keyframes_.push_back(new_keyframe);
-    queued_keyframes_last_kf_tr_this_kf_.push_back(
-        base_kf_tr_frame_.empty() ? SE3f() : base_kf_tr_frame_.back());
+    queued_keyframes_.push_back(new_keyframe);//整个代码就这里向queued_keyframes_压入数据
+    queued_keyframes_last_kf_tr_this_kf_.push_back( base_kf_tr_frame_.empty() ? SE3f() : base_kf_tr_frame_.back());
     
     // Also queue keyframe image data for loop detection.
-    queued_keyframe_gray_images_.push_back(gray_image);
+    queued_keyframe_gray_images_.push_back(gray_image);//整个代码就这里向queued_keyframe_gray_images_压入数据
     queued_keyframe_depth_images_.push_back(config_.parallel_loop_detection ? nullptr : depth_image);
     
     keyframes_added = queued_keyframes_.size() + direct_ba_->keyframes().size();
     
     direct_ba_->Unlock();
+
+
+
+
   } else {
     // In case of sequential BA, add the keyframe directly.
     AddKeyframeToBA(stream_, new_keyframe, gray_image, depth_image);
@@ -1122,7 +1146,7 @@ void BadSlam::SetBaseKF(Keyframe* kf) {
 }
 
 void BadSlam::AddKeyframeToBA(
-    cudaStream_t stream,
+    cudaStream_t stream,//这个变量只为回环检测服务
     const shared_ptr<Keyframe>& new_keyframe,
     cv::Mat_<u8> gray_image,
     const shared_ptr<Image<u16>>& depth_image) {
@@ -1161,6 +1185,8 @@ void BadSlam::AddKeyframeToBA(
   }
 }
 
+
+//
 void BadSlam::StartParallelIterations(
     int num_planned_iterations,
     bool optimize_depth_intrinsics,
@@ -1179,9 +1205,7 @@ void BadSlam::StartParallelIterations(
   options.optimize_geometry = optimize_geometry;
   
   int max_queued_iterations = config_.max_num_ba_iterations_per_keyframe;
-  int iterations_to_queue =
-      std::min<int>(max_queued_iterations - parallel_ba_iteration_queue_.size(),
-                    num_planned_iterations);
+  int iterations_to_queue = std::min<int>(max_queued_iterations - parallel_ba_iteration_queue_.size(), num_planned_iterations);
   if (iterations_to_queue > 0) {
     parallel_ba_iteration_queue_.reserve(parallel_ba_iteration_queue_.size() + iterations_to_queue);
     for (int i = 0; i < iterations_to_queue; ++ i) {
@@ -1191,12 +1215,14 @@ void BadSlam::StartParallelIterations(
   
   direct_ba_->Unlock();
   zero_iterations_condition_.notify_all();
-}
+}//end function !!!
 
+
+//非常重要的函数！！！！
 void BadSlam::BAThreadMain(OpenGLContext* opengl_context) {
   cudaStream_t thread_stream;
   int stream_priority_low, stream_priority_high;
-  cudaDeviceGetStreamPriorityRange(&stream_priority_low, &stream_priority_high);
+  cudaDeviceGetStreamPriorityRange(&stream_priority_low, &stream_priority_high);//cuda自带的函数接口
   cudaStreamCreateWithPriority(&thread_stream, cudaStreamDefault, stream_priority_low);
   
   OpenGLContext no_context;
@@ -1215,7 +1241,7 @@ void BadSlam::BAThreadMain(OpenGLContext* opengl_context) {
     }
     
     // Pop item from parallel_ba_iteration_queue_
-    ParallelBAOptions options = parallel_ba_iteration_queue_.front();
+    ParallelBAOptions options = parallel_ba_iteration_queue_.front();//parallel_ba_iteration_queue_数据类型是一个vector
     parallel_ba_iteration_queue_.erase(parallel_ba_iteration_queue_.begin());
     
     // Add any queued keyframes (within the lock).
@@ -1226,18 +1252,17 @@ void BadSlam::BAThreadMain(OpenGLContext* opengl_context) {
         mutex_locked = true;
       }
       
-      shared_ptr<Keyframe> new_keyframe = queued_keyframes_.front();
+      shared_ptr<Keyframe> new_keyframe = queued_keyframes_.front();//queued_keyframes_变量在process_frame函数的CreateKeyframe函数被压入数据
       const SE3f& last_kf_tr_this_kf = queued_keyframes_last_kf_tr_this_kf_.front();
       
       // Convert relative to absolute pose
       if (!direct_ba_->keyframes().empty()) {
-        new_keyframe->set_global_T_frame(
-            direct_ba_->keyframes().back()->global_T_frame() * last_kf_tr_this_kf);
+        new_keyframe->set_global_T_frame(direct_ba_->keyframes().back()->global_T_frame() * last_kf_tr_this_kf);
       }
       
       cv::Mat_<u8> gray_image = queued_keyframe_gray_images_.front();
-      shared_ptr<Image<u16>> depth_image = queued_keyframe_depth_images_.front();
-      cudaEvent_t keyframe_event = queued_keyframes_events_.front();
+      shared_ptr<Image<u16>> depth_image = queued_keyframe_depth_images_.front();//queued_keyframe_depth_images_变量在process_frame函数的CreateKeyframe函数被压入数据
+      cudaEvent_t keyframe_event = queued_keyframes_events_.front();//queued_keyframes_events_变量在process_frame函数的CreateKeyframe函数被压入数据
       
       queued_keyframes_.erase(queued_keyframes_.begin());
       queued_keyframes_last_kf_tr_this_kf_.erase(queued_keyframes_last_kf_tr_this_kf_.begin());
@@ -1254,26 +1279,30 @@ void BadSlam::BAThreadMain(OpenGLContext* opengl_context) {
       cudaStreamWaitEvent(thread_stream, keyframe_event, 0);
       cudaEventDestroy(keyframe_event);
       
+      //非常重要的函数！！！！！！！！！
+      //向direct_ba_添加关键帧
       AddKeyframeToBA(thread_stream,
                       new_keyframe,
                       gray_image,
                       depth_image);
-    }
+    }//end  while (!queued_keyframes_.empty()) {
+
     if (mutex_locked) {
       lock.unlock();
     }
     
     // Do a BA iteration.
     vector<SE3f> original_keyframe_T_global;
-    RememberKeyframePoses(direct_ba_.get(), &original_keyframe_T_global);
+    RememberKeyframePoses(direct_ba_.get(), &original_keyframe_T_global);//搜索 void RememberKeyframePoses(
     
     // TODO: Currently, this always runs on all keyframes using the
     //       active_keyframe_window_start/end parameters (i.e., there is no
     //       support for keyframe deactivation).
-    if (config_.use_pcg) {
+    if (config_.use_pcg) {// 默认不会进入条件！！！
       // The PCG-based solver implementation does not do any locking, so it is unsafe to use it in parallel.
       LOG(WARNING) << "PCG-based solving is not supported for real-time running, using the alternating solver instead. Use --sequential_ba to be able to use the PCG-based solver.";
     }
+    //非常重要的函数！！！！！！！
     direct_ba_->BundleAdjustment(
         thread_stream,
         options.optimize_depth_intrinsics && config_.use_geometric_residuals,
@@ -1293,6 +1322,7 @@ void BadSlam::BAThreadMain(OpenGLContext* opengl_context) {
         nullptr);
     
     direct_ba_->Lock();
+    //这函数的作用是当关键帧的位姿在BA中被优化后，非关键帧的位姿也需要根据关键帧的位姿进行调整
     vis::ExtrapolateAndInterpolateKeyframePoseChanges(
         config_.start_frame,
         last_frame_index_,
@@ -1302,7 +1332,7 @@ void BadSlam::BAThreadMain(OpenGLContext* opengl_context) {
     // Update base_kf_global_T_frame_
     base_kf_global_T_frame_ = base_kf_->global_T_frame();
     direct_ba_->Unlock();
-  }
+  }//end while!!!!!!
   
   cudaStreamDestroy(thread_stream);
   
@@ -1314,6 +1344,6 @@ void BadSlam::BAThreadMain(OpenGLContext* opengl_context) {
   quit_done_ = true;
   quit_lock.unlock();
   quit_condition_.notify_all();
-}
+}//end function BAThreadMain
 
 }

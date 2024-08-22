@@ -30,6 +30,7 @@
 
 namespace vis {
 
+//PreLoadThread构造函数！！！！！
 PreLoadThread::PreLoadThread(RGBDVideo<Vec3u8, u16>* rgbd_video) {
   rgbd_video_ = rgbd_video;
   
@@ -63,7 +64,7 @@ void PreLoadThread::ThreadMain() {
   while (true) {
     // Wait until there is a preload request.
     // ### Input data lock start ###
-    unique_lock<mutex> input_lock(input_mutex_);
+    unique_lock<mutex> input_lock(input_mutex_);//最核心的就是input_mutex_这个变量！！！！！！
     while (preload_frame_index_ == -1 && !thread_exit_requested_) {
       done_ = true;
       all_work_done_condition_.notify_all();
@@ -82,10 +83,10 @@ void PreLoadThread::ThreadMain() {
     input_lock.unlock();
     // ### Input data lock end ###
     
-    rgbd_video_->color_frame_mutable(preload_frame_index)->GetImage().get();
+    rgbd_video_->color_frame_mutable(preload_frame_index)->GetImage().get();//GetImage函数实际作用就是从硬盘中读取数据,get表示返回指正指正对应的原始指针
     rgbd_video_->depth_frame_mutable(preload_frame_index)->GetImage().get();
   }
-}
+}//end function ThreadMain
 
 void PreLoadThread::PreLoad(int frame_index) {
   unique_lock<mutex> input_lock(input_mutex_);

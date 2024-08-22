@@ -532,7 +532,7 @@ bool LoadState(
   
   fclose(file);
   return true;
-}
+}//LoadState function
 
 bool SavePoses(
     const RGBDVideo<Vec3u8, u16>& rgbd_video,

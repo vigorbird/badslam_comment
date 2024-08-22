@@ -69,6 +69,7 @@ void OpenGLContext::Deinitialize() {
   }
 }
 
+//
 void OpenGLContext::AttachToCurrent() {
   if (kUseQtImplementation) {
     impl.reset(new OpenGLContextQt());
@@ -79,7 +80,8 @@ void OpenGLContext::AttachToCurrent() {
   }
 #endif // !WIN32
   impl->AttachToCurrent();
-}
+}//end function AttachToCurrent
+
 
 void OpenGLContext::Detach() {
   impl.reset();

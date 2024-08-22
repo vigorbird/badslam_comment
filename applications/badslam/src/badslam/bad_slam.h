@@ -356,7 +356,7 @@ class BadSlam {
   std::atomic<int> last_frame_index_;
   
   shared_ptr<BadSlamRenderWindow> render_window_;
-  OpenGLContext* opengl_context_;
+  OpenGLContext* opengl_context_; //这个是作者自己定义的类，应该是为了和opengl进行交互！！！！！
   
   bool valid_;
   BadSlamConfig config_;

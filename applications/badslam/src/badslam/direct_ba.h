@@ -250,6 +250,7 @@ class DirectBA {
 #endif
     return color_camera_;
   }
+  
   inline void SetColorCamera(const PinholeCamera4f& camera) {
     lock_guard<mutex> lock(ba_thread_mutex_);
     color_camera_ = camera;

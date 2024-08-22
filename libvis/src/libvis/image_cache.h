@@ -149,6 +149,7 @@ class ImageCache : public ImageCacheElement<T> {
   
   // Tries to read the image from disk if it is not loaded. Returns the image
   // shared_ptr or a null shared_ptr if the image could not be loaded.
+  //这个函数就是从硬盘中读取图像
   inline const shared_ptr<Image<T>>& GetImage() {
     if (!EnsureImageIsLoaded()) {
       // Make sure that image_ is not a valid pointer.
@@ -194,7 +195,7 @@ class ImageCache : public ImageCacheElement<T> {
   
   string image_path_;
   shared_ptr<Image<T>> image_;
-};
+};//end class ImageCache
 
 
 

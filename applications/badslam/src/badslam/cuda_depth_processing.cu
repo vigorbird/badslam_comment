@@ -97,6 +97,7 @@ __global__ void BilateralFilteringAndDepthCutoffCUDAKernel(
   }
 }
 
+//BilateralFilteringAndDepthCutoffCUDA实现
 void BilateralFilteringAndDepthCutoffCUDA(
     cudaStream_t stream,
     float sigma_xy,
@@ -254,6 +255,7 @@ __global__ void ComputeNormalsCUDAKernel(
   }
 }
 
+//ComputeNormalsCUDA实现
 void ComputeNormalsCUDA(
     cudaStream_t stream,
     const PixelCenterUnprojector& unprojector,

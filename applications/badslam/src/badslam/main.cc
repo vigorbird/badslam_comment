@@ -502,11 +502,13 @@ int LIBVIS_QT_MAIN(int argc, char** argv) {
   setlocale(LC_ALL, "C");
   
   // Load the dataset, respectively start the live input or show the GUI.
+  //不同硬件流启动的代码！！！！ 同时作者也允许从数据集中读取数据，我们直接看从数据集中读取数据的代码即可！！！！！
   RealSenseInputThread rs_input;
   StructureInputThread structure_input;
   K4AInputThread k4a_input;
+  //不同的数据集和硬件设备都会抽象成一个rgbd_video
   RGBDVideo<Vec3u8, u16> rgbd_video;
-  int live_input = 0;
+  int live_input = 0;//如果我们读取的是数据集的数据，那么这个变量就是等于0
   
   if (dataset_folder_path.empty() || gui || gui_run) {
     if (!trajectory_path.empty()) {
@@ -555,6 +557,8 @@ int LIBVIS_QT_MAIN(int argc, char** argv) {
         bad_slam_config.k4a_record_path.c_str());
     live_input = 2;
   } else {
+    //非常重要的函数！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+    //读取数据集得到
     if (!ReadTUMRGBDDatasetAssociatedAndCalibrated(
                 dataset_folder_path.c_str(),
                 trajectory_path.empty() ? nullptr : trajectory_path.c_str(),
@@ -578,16 +582,12 @@ int LIBVIS_QT_MAIN(int argc, char** argv) {
   
   // Get initial depth and color camera intrinsics. The generic camera type is
   // casted to the pinhole camera type; only pinhole cameras are supported.
-  shared_ptr<Camera> initial_depth_camera(
-      rgbd_video.depth_camera()->Scaled(depth_camera_scaling));
-  CHECK_EQ(initial_depth_camera->type_int(),
-           static_cast<int>(Camera::Type::kPinholeCamera4f));
+  shared_ptr<Camera> initial_depth_camera( rgbd_video.depth_camera()->Scaled(depth_camera_scaling));
+  CHECK_EQ(initial_depth_camera->type_int(), static_cast<int>(Camera::Type::kPinholeCamera4f));
   *rgbd_video.depth_camera_mutable() = initial_depth_camera;
   
-  shared_ptr<Camera> initial_color_camera(
-      rgbd_video.color_camera()->Scaled(color_camera_scaling));
-  CHECK_EQ(initial_color_camera->type_int(),
-           static_cast<int>(Camera::Type::kPinholeCamera4f));
+  shared_ptr<Camera> initial_color_camera(rgbd_video.color_camera()->Scaled(color_camera_scaling));
+  CHECK_EQ(initial_color_camera->type_int(), static_cast<int>(Camera::Type::kPinholeCamera4f));
   *rgbd_video.color_camera_mutable() = initial_color_camera;
   
   
@@ -605,6 +605,7 @@ int LIBVIS_QT_MAIN(int argc, char** argv) {
   }
   
   // Initialize image pre-loading thread.
+  //搜索 PreLoadThread构造函数！！！！！！！！！！！
   PreLoadThread pre_load_thread(&rgbd_video);
   
   // Allocate image displays.
@@ -613,16 +614,14 @@ int LIBVIS_QT_MAIN(int argc, char** argv) {
   
   // Initialize BAD SLAM.
   if (bad_slam_config.enable_loop_detection) {
-    boost::filesystem::path program_dir =
-        boost::filesystem::path(argv[0]).parent_path();
-    bad_slam_config.loop_detection_vocabulary_path =
-        (program_dir / "resources" / "brief_k10L6.voc").string();
-    bad_slam_config.loop_detection_pattern_path =
-        (program_dir / "resources" / "brief_pattern.yml").string();
+    boost::filesystem::path program_dir =  boost::filesystem::path(argv[0]).parent_path();
+    bad_slam_config.loop_detection_vocabulary_path = (program_dir / "resources" / "brief_k10L6.voc").string();
+    bad_slam_config.loop_detection_pattern_path = (program_dir / "resources" / "brief_pattern.yml").string();
     bad_slam_config.loop_detection_images_width = rgbd_video.color_camera()->width();
     bad_slam_config.loop_detection_images_height = rgbd_video.color_camera()->height();
   }
-  
+
+  //非常重要的BadSlam构造函数！！！！！！！！！
   unique_ptr<BadSlam> bad_slam(new BadSlam(bad_slam_config, &rgbd_video,
                                            render_window, nullptr));
   
@@ -649,10 +648,9 @@ int LIBVIS_QT_MAIN(int argc, char** argv) {
   // ### Main loop ###
   bool quit = false;
   bool program_aborted = false;
-  for (usize frame_index = bad_slam_config.start_frame;
-       (live_input || frame_index < rgbd_video.frame_count()) && !quit;
-       ++ frame_index) {
-    pre_load_thread.WaitUntilDone();
+  //大的for循环开始！！！！！！！！！！！！！
+  for (usize frame_index = bad_slam_config.start_frame;(live_input || frame_index < rgbd_video.frame_count()) && !quit; ++ frame_index) {
+    pre_load_thread.WaitUntilDone();//线程进行等待数据加载进来！！！
     if (live_input == 1) {
       rs_input.GetNextFrame();
     } else if (live_input == 2) {
@@ -663,10 +661,9 @@ int LIBVIS_QT_MAIN(int argc, char** argv) {
     
     // Get the current RGB-D frame's RGB and depth images. This may wait for I/O
     // to complete in case it did not complete in the pre-loading thread yet.
-    const Image<Vec3u8>* rgb_image =
-        rgbd_video.color_frame_mutable(frame_index)->GetImage().get();
-    const Image<u16>* depth_image =
-        rgbd_video.depth_frame_mutable(frame_index)->GetImage().get();
+    //获取每帧的rgb图像和深度图像
+    const Image<Vec3u8>* rgb_image = rgbd_video.color_frame_mutable(frame_index)->GetImage().get();
+    const Image<u16>* depth_image =  rgbd_video.depth_frame_mutable(frame_index)->GetImage().get();
     
     // Pre-load the next frame.
     if (frame_index < rgbd_video.frame_count() - 1) {
@@ -678,23 +675,22 @@ int LIBVIS_QT_MAIN(int argc, char** argv) {
       image_display->Update(*rgb_image, "image");
       depth_display->Update(*depth_image, "depth",
                             static_cast<u16>(0),
-                            static_cast<u16>(depth_scaling *
-                                             bad_slam_config.max_depth));
+                            static_cast<u16>(depth_scaling * bad_slam_config.max_depth));
     }
     
     // Let BAD SLAM process the current RGB-D frame. This function does the
     // actual work.
-    bad_slam->ProcessFrame(frame_index);
+    bad_slam->ProcessFrame(frame_index);//非常重要的函数！！！！！！！
     
     // Update the 3D visualization.
     bad_slam->UpdateOdometryVisualization(frame_index, /*show_current_frame_cloud*/ false);
     
     // Get timings for processing this frame.
     float odometry_milliseconds;
-    bad_slam->GetFrameTimings(&odometry_milliseconds);
+    bad_slam->GetFrameTimings(&odometry_milliseconds);//获取处理这个frame每个环节的耗时
     
     // Measure the frame time, and optionally restrict the frames per second.
-    bad_slam->EndFrame();
+    bad_slam->EndFrame();//设置一些结束时间
     
     if (save_timings_stream.is_open()) {
       save_timings_stream << "odometry " << odometry_milliseconds << endl;
@@ -758,10 +754,11 @@ int LIBVIS_QT_MAIN(int argc, char** argv) {
       break;
     }
   }  // end of main loop
-  
+  //大的for循环结束！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
   
   if (!program_aborted) {
     // Run final BA iterations?
+    //默认是不会进入这个条件的
     if (final_ba_iterations > 0) {
       // First, run BA in a windowed way to avoid allocating an extreme number
       // of surfels in the case it has not been run before
@@ -806,7 +803,7 @@ int LIBVIS_QT_MAIN(int argc, char** argv) {
             /*frame_index*/ rgbd_video.frame_count() - 1,
             /*show_current_frame_cloud*/ false);
       }
-    }
+    }//end if (final_ba_iterations > 0) {
     
     // Save the resulting point cloud?
     if (!export_point_cloud_path.empty()) {
@@ -864,6 +861,7 @@ int LIBVIS_QT_MAIN(int argc, char** argv) {
         //       end (and they have to be updated with the new
         //       sparse_surfel_cell_size). Make a separate function to update
         //       this?
+        //非常重要的函数！！！！！！！！！！！！！！如果要保存structure，那么还需要再做一次全局的ba！！！！！！！！！！！
         bad_slam->RunBundleAdjustment(
             /*frame_index*/ rgbd_video.frame_count() - 1,
             /*optimize_depth_intrinsics*/ false,
@@ -884,12 +882,9 @@ int LIBVIS_QT_MAIN(int argc, char** argv) {
       bad_slam->direct_ba().SetUseDescriptorResiduals(old_use_photometric_residuals);
       
       // Save the result.
-      SavePointCloudAsPLY(
-          /*stream*/ 0,
-          bad_slam->direct_ba(),
-          export_reconstruction_path);
-    }
-  }
+      SavePointCloudAsPLY(/*stream*/ 0,  bad_slam->direct_ba(), export_reconstruction_path);
+    }//end if (!export_reconstruction_path.empty()) {
+  }//end if (!program_aborted) {
   
   pre_load_thread.RequestExitAndWaitForIt();
   
@@ -899,8 +894,7 @@ int LIBVIS_QT_MAIN(int argc, char** argv) {
     ostringstream tuning_file_path;
     tuning_file_path << "auto_tuning_iteration_" << auto_tuning_iteration << ".txt";
     if (!CUDAAutoTuner::Instance().SaveTuningFile(tuning_file_path.str().c_str())) {
-      LOG(ERROR) << "Could not save auto-tuning result file: "
-                 << tuning_file_path.str();
+      LOG(ERROR) << "Could not save auto-tuning result file: "<< tuning_file_path.str();
     }
   }
   

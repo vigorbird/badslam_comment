@@ -167,6 +167,7 @@ bool ReadTUMRGBDDatasetAssociatedAndCalibrated(
     return false;
   }
   
+  //associated.txt文件每一行存储的是rgb文件时间戳、rgb文件名称、深度图像时间戳，深度图像文件名
   while (!associated_file.eof() && !associated_file.bad()) {
     std::getline(associated_file, line);
     if (line.size() == 0 || line[0] == '#') {
@@ -178,8 +179,7 @@ bool ReadTUMRGBDDatasetAssociatedAndCalibrated(
     char depth_time_string[128];
     char depth_filename[128];
     
-    if (sscanf(line.c_str(), "%s %s %s %s",
-        rgb_time_string, rgb_filename, depth_time_string, depth_filename) != 4) {
+    if (sscanf(line.c_str(), "%s %s %s %s", rgb_time_string, rgb_filename, depth_time_string, depth_filename) != 4) {
       LOG(ERROR) << "Cannot read association line!";
       return false;
     }
@@ -200,22 +200,19 @@ bool ReadTUMRGBDDatasetAssociatedAndCalibrated(
       }
     }
     
-    string color_filepath =
-        string(dataset_folder_path) + "/" + rgb_filename;
+    string color_filepath = string(dataset_folder_path) + "/" + rgb_filename;
     ImageFramePtr<ColorT, SE3f> image_frame(new ImageFrame<ColorT, SE3f>(color_filepath, rgb_timestamp, rgb_time_string));
     image_frame->SetGlobalTFrame(rgb_global_T_frame);
     rgbd_video->color_frames_mutable()->push_back(image_frame);
     
-    string depth_filepath =
-        string(dataset_folder_path) + "/" + depth_filename;
+    string depth_filepath = string(dataset_folder_path) + "/" + depth_filename;
     ImageFramePtr<DepthT, SE3f> depth_frame(new ImageFrame<DepthT, SE3f>(depth_filepath, depth_timestamp, depth_time_string));
     depth_frame->SetGlobalTFrame(depth_global_T_frame);
     rgbd_video->depth_frames_mutable()->push_back(depth_frame);
     
     if (width == 0) {
       // Get width and height by loading one image file.
-      shared_ptr<Image<ColorT>> image_ptr =
-          image_frame->GetImage();
+      shared_ptr<Image<ColorT>> image_ptr =  image_frame->GetImage();
       if (!image_ptr) {
         LOG(ERROR) << "Cannot load image to determine image dimensions.";
         return false;
@@ -224,19 +221,17 @@ bool ReadTUMRGBDDatasetAssociatedAndCalibrated(
       height = image_ptr->height();
       image_frame->ClearImageAndDerivedData();
     }
-  }
+  }//while循环结束，读取association.txt文件结束！！！！！！
   
   float camera_parameters[4];
   camera_parameters[0] = fx;
   camera_parameters[1] = fy;
   camera_parameters[2] = cx + 0.5;
   camera_parameters[3] = cy + 0.5;
-  rgbd_video->color_camera_mutable()->reset(
-      new PinholeCamera4f(width, height, camera_parameters));
-  rgbd_video->depth_camera_mutable()->reset(
-      new PinholeCamera4f(width, height, camera_parameters));
+  rgbd_video->color_camera_mutable()->reset(new PinholeCamera4f(width, height, camera_parameters));
+  rgbd_video->depth_camera_mutable()->reset(new PinholeCamera4f(width, height, camera_parameters));
   
   return true;
-}
+}//end function ReadTUMRGBDDatasetAssociatedAndCalibrated
 
 }

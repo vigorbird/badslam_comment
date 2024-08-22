@@ -41,7 +41,12 @@ void RememberKeyframePoses(
   }
 }
 
-
+// Given previously stored keyframe poses (with RememberKeyframePoses()) and the
+// current keyframe poses (from the given DirectBA instance), deforms the poses
+// of non-keyframes in the rgbd_video (within the range
+// [start_frame, end_frame]) to match the changes in keyframe poses from the old
+// to the current state.
+//这函数的作用是当关键帧的位姿在BA中被优化后，非关键帧的位姿也需要根据关键帧的位姿进行调整
 void ExtrapolateAndInterpolateKeyframePoseChanges(
     u32 start_frame,
     u32 end_frame,
@@ -78,9 +83,7 @@ void ExtrapolateAndInterpolateKeyframePoseChanges(
     SE3f new_global_T_other_frame;
     if (next_keyframe == nullptr ||  // Extrapolate at the end.
         prev_keyframe->frame_index() > other_frame_index) {  // Extrapolate at the start.
-      SE3f old_kf_T_other_frame =
-          original_keyframe_T_global[prev_keyframe_index] *
-          rgbd_video->depth_frame_mutable(other_frame_index)->global_T_frame();
+      SE3f old_kf_T_other_frame = original_keyframe_T_global[prev_keyframe_index] * rgbd_video->depth_frame_mutable(other_frame_index)->global_T_frame();
       new_global_T_other_frame =
           prev_keyframe->global_T_frame() *
           old_kf_T_other_frame;
@@ -108,8 +111,7 @@ void ExtrapolateAndInterpolateKeyframePoseChanges(
       
       u32 prev_keyframe_frame_index = prev_keyframe->frame_index();
       u32 next_keyframe_frame_index = next_keyframe->frame_index();
-      float factor = (other_frame_index - prev_keyframe_frame_index) *
-                      1.0f / (next_keyframe_frame_index - prev_keyframe_frame_index);
+      float factor = (other_frame_index - prev_keyframe_frame_index) * 1.0f / (next_keyframe_frame_index - prev_keyframe_frame_index);
       
       SE3f interpolated_other_old_T_other_new;
       interpolated_other_old_T_other_new.translation() =
@@ -119,14 +121,12 @@ void ExtrapolateAndInterpolateKeyframePoseChanges(
           other_old_T_other_new_from_prev.unit_quaternion().slerp(
               factor, other_old_T_other_new_from_next.unit_quaternion()));
       
-      new_global_T_other_frame =
-          rgbd_video->depth_frame_mutable(other_frame_index)->global_T_frame() *
-          interpolated_other_old_T_other_new;
+      new_global_T_other_frame = rgbd_video->depth_frame_mutable(other_frame_index)->global_T_frame() * interpolated_other_old_T_other_new;
     }
     
     rgbd_video->depth_frame_mutable(other_frame_index)->SetGlobalTFrame(new_global_T_other_frame);
     rgbd_video->color_frame_mutable(other_frame_index)->SetGlobalTFrame(new_global_T_other_frame);
   }
-}
+}//end function ExtrapolateAndInterpolateKeyframePoseChanges
 
 }

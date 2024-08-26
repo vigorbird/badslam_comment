@@ -105,6 +105,7 @@ void OptimizeGeometryIterationCUDA(
   // --- Normals ---
   
   // Accumulate normals by projecting the surfels into all active and covis-active keyframes.
+  //1.!!!!!!!!!!!!!
   CallResetSurfelAccum0to3CUDAKernel(
       stream,
       surfels_size,
@@ -125,6 +126,7 @@ void OptimizeGeometryIterationCUDA(
   }
   
   // Solve for the normal updates.
+  //!!!!!!!!!!!!!!!!!!!!
   CallUpdateSurfelNormalCUDAKernel(
       stream,
       /* kernel parameters */
@@ -133,7 +135,7 @@ void OptimizeGeometryIterationCUDA(
       active_surfels.ToCUDA());
   CUDA_CHECK();
   
-  
+  //默认应该是会进入这个条件的
   if (!use_descriptor_residuals) {
     // --- Position ---
     

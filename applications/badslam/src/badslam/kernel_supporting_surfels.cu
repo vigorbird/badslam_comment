@@ -41,6 +41,8 @@
 
 namespace vis {
 
+
+//
 template <int block_width, bool merge_surfels>
 __global__ void DetermineSupportingSurfelsCUDAKernel(
     float cell_merge_dist_squared,
@@ -104,6 +106,8 @@ void CallDetermineSupportingSurfelsCUDAKernel(
     SurfelProjectionParameters surfel_proj,
     SupportingSurfelBuffers supporting_surfels,
     CUDABuffer_<u32> deleted_count_buffer) {
+  //在基础库中作者定义了两个宏，COMPILE_OPTION，CUDA_AUTO_TUNE_1D_TEMPLATED
+  //和算法业务层面的只要关注DetermineSupportingSurfelsCUDAKernel函数即可
   COMPILE_OPTION(merge_surfels,
       CUDA_AUTO_TUNE_1D_TEMPLATED(
           DetermineSupportingSurfelsCUDAKernel,

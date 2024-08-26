@@ -37,6 +37,7 @@
 
 namespace vis {
 
+//CreateSurfelsForKeyframeCUDA实现
 void CreateSurfelsForKeyframeCUDA(
     cudaStream_t stream,
     int sparse_surfel_cell_size,
@@ -91,6 +92,8 @@ void CreateSurfelsForKeyframeCUDA(
       new_surfels_temp_storage_bytes,
       &new_surfel_flag_vector->ToCUDA(),
       &new_surfel_indices->ToCUDA());
+
+      
   if (*new_surfel_count == 0) {
     return;
   }

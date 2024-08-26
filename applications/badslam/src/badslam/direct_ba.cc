@@ -338,15 +338,19 @@ void DirectBA::MergeKeyframes(
   }
 }//end function MergeKeyframes!!!
 
+
+
 void DirectBA::CreateSurfelsForKeyframe(
     cudaStream_t stream,
     bool filter_new_surfels,
     const shared_ptr<Keyframe>& keyframe) {
+
   CUDABuffer<u32>* supporting_surfels[kMergeBufferCount];
   for (int i = 0; i < kMergeBufferCount; ++ i) {
     supporting_surfels[i] = supporting_surfels_[i].get();
   }
   
+  //1.!!!!!!!!!!!!!!!!
   DetermineSupportingSurfelsCUDA(
       stream,
       depth_camera_,
@@ -371,6 +375,7 @@ void DirectBA::CreateSurfelsForKeyframe(
   }
   
   u32 new_surfel_count;
+  //2.!!!!!!!!!!!!!!!!!!!!!!!
   CreateSurfelsForKeyframeCUDA(
       stream,
       depth_params_.sparse_surfel_cell_size,
@@ -403,7 +408,11 @@ void DirectBA::CreateSurfelsForKeyframe(
   surfels_size_ += new_surfel_count;
   surfel_count_ += new_surfel_count;
   Unlock();
-}
+}//end function!!!!!!!!
+
+
+
+
 
 void DirectBA::BundleAdjustment(
       cudaStream_t stream,
@@ -565,9 +574,8 @@ void DirectBA::DetermineCovisibleActiveKeyframes() {
   }
 }
 
-void DirectBA::PerformBASchemeEndTasks(
-    cudaStream_t stream,
-    bool do_surfel_updates) {
+//cudaStream_t 是cuda库的变量
+void DirectBA::PerformBASchemeEndTasks( cudaStream_t stream, bool do_surfel_updates) {
   u32 surfel_count = surfel_count_;
   u32 surfels_size = surfels_size_;
   
@@ -578,7 +586,7 @@ void DirectBA::PerformBASchemeEndTasks(
   
   // Merge similar surfels using all keyframes which were active.
   if (do_surfel_updates) {
-    cudaEventRecord(ba_final_surfel_merge_pre_event_, stream);
+    cudaEventRecord(ba_final_surfel_merge_pre_event_, stream);//cuda的函数
     for (shared_ptr<Keyframe>& keyframe : keyframes_) {
       if (!keyframe) {
         continue;
@@ -597,7 +605,7 @@ void DirectBA::PerformBASchemeEndTasks(
             surfels_.get(),
             supporting_surfels,
             &surfel_count,
-            &deleted_count_buffer_);
+            &deleted_count_buffer_);//比较重要的函数！！！！！！！！！！！！！！
       }
     }
     cudaEventRecord(ba_final_surfel_merge_post_event_, stream);
@@ -615,16 +623,23 @@ void DirectBA::PerformBASchemeEndTasks(
   //       it is possible that an inactive surfel becomes unobserved. In this
   //       case, limiting this check to active surfels will overlook the surfel.
   cudaEventRecord(ba_final_surfel_deletion_and_radius_update_pre_event_, stream);
+  //这个函数也相对来说比较重！！！！！！！！！！！！！！！！！！
   DeleteSurfelsAndUpdateRadiiCUDA(stream, GetMinObservationCount(), depth_camera_, depth_params_, keyframes_, &surfel_count, surfels_size, surfels_.get(), &deleted_count_buffer_);
-  if (kDebugVerifySurfelCount) {
-    DebugVerifySurfelCount(stream, surfel_count, surfels_size, *surfels_);
-  }
+  
+  
+  //debug相关的函数全都不看！！
+  // if (kDebugVerifySurfelCount) {
+  //   DebugVerifySurfelCount(stream, surfel_count, surfels_size, *surfels_);
+  // }
+
+  //这个是非常重的函数！！！！！！！！！！！！！
   CompactSurfelsCUDA(stream, &free_spots_temp_storage_, &free_spots_temp_storage_bytes_, surfel_count, &surfels_size, &surfels_->ToCUDA());
   cudaEventRecord(ba_final_surfel_deletion_and_radius_update_post_event_, stream);
-  
-  if (kDebugVerifySurfelCount) {
-    DebugVerifySurfelCount(stream, surfel_count, surfels_size, *surfels_);
-  }
+   
+   //debug相关的函数全都不看！！
+  // if (kDebugVerifySurfelCount) {
+  //   DebugVerifySurfelCount(stream, surfel_count, surfels_size, *surfels_);
+  // }
   
   Lock();
   surfels_size_ = surfels_size;
@@ -634,25 +649,30 @@ void DirectBA::PerformBASchemeEndTasks(
   
   //LOG(INFO) << "--> final surfel_count: " << surfel_count_;  // << "  (surfels_size: " << surfels_size_ << ")";
   
-  
+  //下面全部都是记录耗时！！！！！可以不看
   // Store timings for events used outside the optimization loop.
-  cudaEventSynchronize(ba_final_surfel_deletion_and_radius_update_post_event_);
-  float elapsed_milliseconds;
+  // cudaEventSynchronize(ba_final_surfel_deletion_and_radius_update_post_event_);
+  // float elapsed_milliseconds;
   
-  cudaEventElapsedTime(&elapsed_milliseconds, ba_final_surfel_deletion_and_radius_update_pre_event_, ba_final_surfel_deletion_and_radius_update_post_event_);
-  Timing::addTime(Timing::getHandle("BA final surfel del. and radius upd."), 0.001 * elapsed_milliseconds);
-  if (timings_stream_) {
-    *timings_stream_ << "BA_final_surfel_deletion_and_radius_update " << elapsed_milliseconds << endl;
-  }
-  
-  if (do_surfel_updates) {
-    cudaEventElapsedTime(&elapsed_milliseconds, ba_final_surfel_merge_pre_event_, ba_final_surfel_merge_post_event_);
-    Timing::addTime(Timing::getHandle("BA final surfel merge and compact"), 0.001 * elapsed_milliseconds);
-    if (timings_stream_) {
-      *timings_stream_ << "BA_final_surfel_merge_and_compaction " << elapsed_milliseconds << endl;
-    }
-  }
-}
+  // cudaEventElapsedTime(&elapsed_milliseconds, ba_final_surfel_deletion_and_radius_update_pre_event_, ba_final_surfel_deletion_and_radius_update_post_event_);
+  // Timing::addTime(Timing::getHandle("BA final surfel del. and radius upd."), 0.001 * elapsed_milliseconds);
+  // if (timings_stream_) {
+  //   *timings_stream_ << "BA_final_surfel_deletion_and_radius_update " << elapsed_milliseconds << endl;
+  // }
+ 
+
+  // if (do_surfel_updates) {
+  //   cudaEventElapsedTime(&elapsed_milliseconds, ba_final_surfel_merge_pre_event_, ba_final_surfel_merge_post_event_);
+  //   Timing::addTime(Timing::getHandle("BA final surfel merge and compact"), 0.001 * elapsed_milliseconds);
+  //   if (timings_stream_) {
+  //     *timings_stream_ << "BA_final_surfel_merge_and_compaction " << elapsed_milliseconds << endl;
+  //   }
+  // }
+}//end function PerformBASchemeEndTasks
+
+
+
+
 
 void DirectBA::UpdateBAVisualization(cudaStream_t stream) {
   if (!render_window_) {

@@ -382,6 +382,7 @@ __global__ void AccumulatePoseEstimationCoeffsCUDAKernel(
   }
 }
 
+//CallAccumulatePoseEstimationCoeffsCUDAKernel实现
 void CallAccumulatePoseEstimationCoeffsCUDAKernel(
     cudaStream_t stream,
     bool debug,

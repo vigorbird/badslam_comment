@@ -276,6 +276,6 @@ void CompactSurfelsCUDA(
   CUDA_CHECK();
   
   *surfels_size = surfel_count;
-}
+}//CompactSurfelsCUDA函数！！！
 
 }

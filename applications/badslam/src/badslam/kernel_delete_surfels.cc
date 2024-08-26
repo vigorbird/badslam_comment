@@ -96,6 +96,7 @@ void DeleteSurfelsAndUpdateRadiiCUDAImpl(
   *surfel_count -= deleted_count;
 }
 
+//
 void DeleteSurfelsAndUpdateRadiiCUDA(
     cudaStream_t stream,
     int min_observation_count,

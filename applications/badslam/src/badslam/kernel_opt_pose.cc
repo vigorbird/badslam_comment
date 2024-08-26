@@ -36,6 +36,8 @@
 
 namespace vis {
 
+
+//AccumulatePoseEstimationCoeffsCUDA实现
 void AccumulatePoseEstimationCoeffsCUDA(
     cudaStream_t stream,
     bool use_depth_residuals,
@@ -71,6 +73,7 @@ void AccumulatePoseEstimationCoeffsCUDA(
   helper_buffers->H_buffer.Clear(0, stream);
   helper_buffers->b_buffer.Clear(0, stream);
   
+  //搜索 CallAccumulatePoseEstimationCoeffsCUDAKernel实现
   CallAccumulatePoseEstimationCoeffsCUDAKernel(
       stream,
       debug,
@@ -94,7 +97,7 @@ void AccumulatePoseEstimationCoeffsCUDA(
   helper_buffers->H_buffer.DownloadAsync(stream, H);
   helper_buffers->b_buffer.DownloadAsync(stream, b);
   cudaStreamSynchronize(stream);
-}
+}//
 
 void AccumulatePoseEstimationCoeffsFromImagesCUDA(
     cudaStream_t stream,

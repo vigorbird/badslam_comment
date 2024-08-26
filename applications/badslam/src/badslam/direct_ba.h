@@ -433,9 +433,7 @@ class DirectBA {
   
   void DetermineNewKeyframeCoVisibility(const shared_ptr<Keyframe>& new_keyframe);
   
-  void PerformBASchemeEndTasks(
-    cudaStream_t stream,
-    bool do_surfel_updates);
+  void PerformBASchemeEndTasks( cudaStream_t stream, bool do_surfel_updates);
   
   
   // GPU buffers for PCG-based bundle adjustment implementation.

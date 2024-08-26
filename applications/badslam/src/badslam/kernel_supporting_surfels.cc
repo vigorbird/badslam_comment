@@ -85,8 +85,7 @@ void DetermineSupportingSurfelsCUDAImpl(
         merge_surfels,
         cell_merge_dist_squared,
         cos_surfel_merge_normal_threshold,
-        CreateSurfelProjectionParameters(
-            camera, depth_params, surfels_size, *surfels, depth_buffer, normals_buffer, frame_T_global),
+        CreateSurfelProjectionParameters(camera, depth_params, surfels_size, *surfels, depth_buffer, normals_buffer, frame_T_global),
         supporting_surfel_buffers,
         (*deleted_count_buffer)->ToCUDA());
     
@@ -107,7 +106,7 @@ void DetermineSupportingSurfelsCUDAImpl(
         CUDABuffer_<u32>());
   }
   CUDA_CHECK();
-}
+}//end function DetermineSupportingSurfelsCUDAImpl
 
 void DetermineSupportingSurfelsCUDA(
     cudaStream_t stream,

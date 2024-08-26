@@ -45,7 +45,7 @@ void DebugVerifySurfelCount(
   //       not matter since this is a debug function.
   CUDABuffer<u32> count_buffer(1, 1);
   count_buffer.Clear(0, stream);
-  
+  //搜索 void CallCountValidSurfelsCUDAKernel(
   CallCountValidSurfelsCUDAKernel(
       stream,
       surfels_size,
@@ -58,6 +58,6 @@ void DebugVerifySurfelCount(
   
   CHECK_EQ(count, surfel_count);
   LOG(INFO) << "DebugVerifySurfelCount: ok";
-}
+}//end function  DebugVerifySurfelCount
 
 }

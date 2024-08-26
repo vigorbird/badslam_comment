@@ -37,7 +37,8 @@
 
 namespace vis {
 
-constexpr bool kDebugVerifySurfelCount = false;
+//常量表达式的计算往往发生在程序的编译阶段，这可以极大提高程序的执行效率，因为表达式只需要在编译阶段计算一次，节省了每次程序运行时都需要计算一次的时间。
+constexpr bool kDebugVerifySurfelCount = false;//表示这是一个常量表达式 
 
 void DirectBA::EstimateFramePose(cudaStream_t stream,
                                  const SE3f& global_T_frame_initial_estimate,
@@ -56,68 +57,71 @@ void DirectBA::EstimateFramePose(cudaStream_t stream,
   // Set this to true to debug apparent wrong pose estimates:
   constexpr bool kDebugDivergence = false;
   
-repeat_pose_estimation:;
+repeat_pose_estimation:;//原始的代码中就有这句话！！！！！！！！！！不是我自己添加的！！！！
   
   SE3f global_T_frame_estimate = global_T_frame_initial_estimate;
   
   shared_ptr<Point3fC3u8Cloud> debug_frame_cloud;
-  if (kDebug) {
-    // Show point cloud.
-//     Image<u16> depth_buffer_calibrated(depth_buffer.width(), depth_buffer.height());
-    Image<u16> depth_buffer_cpu(depth_buffer.width(), depth_buffer.height());
-    depth_buffer.DownloadAsync(stream, &depth_buffer_cpu);
-    cudaStreamSynchronize(stream);
+  //debug代码不用看！！！！
+//   if (kDebug) {
+//     // Show point cloud.
+// //     Image<u16> depth_buffer_calibrated(depth_buffer.width(), depth_buffer.height());
+//     Image<u16> depth_buffer_cpu(depth_buffer.width(), depth_buffer.height());
+//     depth_buffer.DownloadAsync(stream, &depth_buffer_cpu);
+//     cudaStreamSynchronize(stream);
     
-    Image<float> cfactor_buffer_cpu(cfactor_buffer_->width(), cfactor_buffer_->height());
-    cfactor_buffer_->DownloadAsync(stream, &cfactor_buffer_cpu);
-    cudaStreamSynchronize(stream);
+//     Image<float> cfactor_buffer_cpu(cfactor_buffer_->width(), cfactor_buffer_->height());
+//     cfactor_buffer_->DownloadAsync(stream, &cfactor_buffer_cpu);
+//     cudaStreamSynchronize(stream);
     
-    usize point_count = 0;
-    for (u32 y = 0; y < depth_buffer_cpu.height(); ++ y) {
-      const u16* ptr = depth_buffer_cpu.row(y);
-      const u16* end = ptr + depth_buffer_cpu.width();
-      while (ptr < end) {
-        if (!(*ptr & kInvalidDepthBit)) {
-          ++ point_count;
-        }
-        ++ ptr;
-      }
-    }
+//     usize point_count = 0;
+//     for (u32 y = 0; y < depth_buffer_cpu.height(); ++ y) {
+//       const u16* ptr = depth_buffer_cpu.row(y);
+//       const u16* end = ptr + depth_buffer_cpu.width();
+//       while (ptr < end) {
+//         if (!(*ptr & kInvalidDepthBit)) {
+//           ++ point_count;
+//         }
+//         ++ ptr;
+//       }
+//     }
     
-    debug_frame_cloud.reset(new Point3fC3u8Cloud(point_count));
-    usize point_index = 0;
-    for (int y = 0; y < depth_buffer.height(); ++ y) {
-      for (int x = 0; x < depth_buffer.width(); ++ x) {
-        if (kInvalidDepthBit & depth_buffer_cpu(x, y)) {
-//           depth_buffer_calibrated(x, y) = numeric_limits<u16>::max();
-          continue;
-        }
-        float depth = RawToCalibratedDepth(
-            depth_params_.a,
-            cfactor_buffer_cpu(x / depth_params_.sparse_surfel_cell_size,
-                               y / depth_params_.sparse_surfel_cell_size),
-            depth_params_.raw_to_float_depth,
-            depth_buffer_cpu(x, y));
-//         depth_buffer_calibrated(x, y) = depth / depth_params_.raw_to_float_depth;
-        Point3fC3u8& point = debug_frame_cloud->at(point_index);
-        point.position() = depth * depth_camera_.UnprojectFromPixelCenterConv(Vec2f(x, y));
-        point.color() = Vec3u8(255, 80, 80);
-        ++ point_index;
-      }
-    }
+//     debug_frame_cloud.reset(new Point3fC3u8Cloud(point_count));
+//     usize point_index = 0;
+//     for (int y = 0; y < depth_buffer.height(); ++ y) {
+//       for (int x = 0; x < depth_buffer.width(); ++ x) {
+//         if (kInvalidDepthBit & depth_buffer_cpu(x, y)) {
+// //           depth_buffer_calibrated(x, y) = numeric_limits<u16>::max();
+//           continue;
+//         }
+//         //这是一个小函数！！！！！！！
+//         float depth = RawToCalibratedDepth(
+//             depth_params_.a,
+//             cfactor_buffer_cpu(x / depth_params_.sparse_surfel_cell_size,
+//                                y / depth_params_.sparse_surfel_cell_size),
+//             depth_params_.raw_to_float_depth,
+//             depth_buffer_cpu(x, y));
+// //         depth_buffer_calibrated(x, y) = depth / depth_params_.raw_to_float_depth;
+//         Point3fC3u8& point = debug_frame_cloud->at(point_index);
+//         point.position() = depth * depth_camera_.UnprojectFromPixelCenterConv(Vec2f(x, y));
+//         point.color() = Vec3u8(255, 80, 80);
+//         ++ point_index;
+//       }
+//     }
     
-    LOG(INFO) << "Debug: initial estimate for camera position: " << global_T_frame_estimate.translation().transpose();
-    if (render_window_) {
-      render_window_->SetCurrentFramePose(global_T_frame_estimate.matrix());  // TODO: Display an additional frustum here instead of mis-using the current camera pose frustum.
+//     LOG(INFO) << "Debug: initial estimate for camera position: " << global_T_frame_estimate.translation().transpose();
+//     //渲染相关的代码可以不看！！！！
+//     if (render_window_) {
+//       render_window_->SetCurrentFramePose(global_T_frame_estimate.matrix());  // TODO: Display an additional frustum here instead of mis-using the current camera pose frustum.
       
-      render_window_->SetFramePointCloud(
-          debug_frame_cloud,
-          global_T_frame_estimate);
+//       render_window_->SetFramePointCloud(
+//           debug_frame_cloud,
+//           global_T_frame_estimate);
       
-      render_window_->RenderFrame();
-    }
-    std::getchar();
-  }
+//       render_window_->RenderFrame();
+//     }
+//     std::getchar();
+//   }
   
   if (gather_convergence_samples_) {
     convergence_samples_file_ << "EstimateFramePose()" << std::endl;
@@ -130,6 +134,7 @@ repeat_pose_estimation:;
   const int kMaxIterations = gather_convergence_samples_ ? 100 : 30;
   bool converged = false;
   int iteration;
+  //开始大的for循环了！！！！！！！！！！！！！！！！！！！！！！！！
   for (iteration = 0; iteration < kMaxIterations; ++ iteration) {
     if (kDebug) {
       LOG(INFO) << "Debug: iteration " << iteration;
@@ -150,6 +155,7 @@ repeat_pose_estimation:;
       b.setZero();
     } else {
       float H_temp[6 * (6 + 1) / 2];
+      //搜索 AccumulatePoseEstimationCoeffsCUDA实现
       AccumulatePoseEstimationCoeffsCUDA(
           stream,
           use_depth_residuals_,
@@ -213,19 +219,18 @@ repeat_pose_estimation:;
     constexpr float kDamping = 1.f;
     global_T_frame_estimate = global_T_frame_estimate * SE3f::exp(-kDamping * x);
     
-    if (kDebug) {
-      LOG(INFO) << "Debug: camera position: " << global_T_frame_estimate.translation().transpose();
-      if (render_window_) {
-        render_window_->SetCurrentFramePose(global_T_frame_estimate.matrix());  // TODO: Display an additional frustum here instead of mis-using the current camera pose frustum.
+    //debug 相关的代码不用看！！！！！
+    // if (kDebug) {
+    //   LOG(INFO) << "Debug: camera position: " << global_T_frame_estimate.translation().transpose();
+    //   if (render_window_) {
+    //     render_window_->SetCurrentFramePose(global_T_frame_estimate.matrix());  // TODO: Display an additional frustum here instead of mis-using the current camera pose frustum.
         
-        render_window_->SetFramePointCloud(
-            debug_frame_cloud,
-            global_T_frame_estimate);
+    //     render_window_->SetFramePointCloud(debug_frame_cloud, global_T_frame_estimate);
         
-        render_window_->RenderFrame();
-      }
-      std::getchar();
-    }
+    //     render_window_->RenderFrame();
+    //   }
+    //   std::getchar();
+    // }
     
     // Check for convergence
     converged = IsScale1PoseEstimationConverged(x);
@@ -241,8 +246,10 @@ repeat_pose_estimation:;
       convergence_samples_file_ << "x " << x.transpose() << std::endl;
       convergence_samples_file_ << "residual_sum " << residual_sum << std::endl;
     }
-  }
+  }//end for (iteration = 0; iteration < kMaxIterations; ++ iteration) {！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
   
+
+  //我个人认为下面的代码全部都是debug用的代码，完全可以不用看！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
   if (!converged) {
     static int not_converged_count = 0;
     ++ not_converged_count;
@@ -282,6 +289,7 @@ repeat_pose_estimation:;
   *out_global_T_frame_estimate = global_T_frame_estimate;
 }
 
+//整个文件就两个函数，上面的这个函数被BundleAdjustmentAlternating调用了
 void DirectBA::BundleAdjustmentAlternating(
     cudaStream_t stream,
     bool optimize_depth_intrinsics,
@@ -299,6 +307,7 @@ void DirectBA::BundleAdjustmentAlternating(
     double time_limit,
     Timer* timer,
     std::function<bool (int)> progress_function) {
+      
   if (converged) {
     *converged = false;
   }
@@ -310,12 +319,9 @@ void DirectBA::BundleAdjustmentAlternating(
   int fixed_ba_iteration_count = ba_iteration_count_;
   Unlock();
   
-  if (!increase_ba_iteration_count &&
-      fixed_ba_iteration_count != last_ba_iteration_count_) {
+  if (!increase_ba_iteration_count && fixed_ba_iteration_count != last_ba_iteration_count_) {
     last_ba_iteration_count_ = fixed_ba_iteration_count;
-    PerformBASchemeEndTasks(
-        stream,
-        do_surfel_updates);
+    PerformBASchemeEndTasks( stream, do_surfel_updates);//搜索 DirectBA::PerformBASchemeEndTasks！！！！！！！！！
   }
   
   CUDABuffer<u32>* supporting_surfels[kMergeBufferCount];
@@ -327,23 +333,24 @@ void DirectBA::BundleAdjustmentAlternating(
   keyframes_with_new_surfels.reserve(keyframes_.size());
   
   
-  bool fixed_active_keyframe_set =
-      active_keyframe_window_start > 0 || active_keyframe_window_end > 0;
+  bool fixed_active_keyframe_set =  active_keyframe_window_start > 0 || active_keyframe_window_end > 0;
   
   if (active_keyframe_window_start != 0 || active_keyframe_window_end != keyframes_.size() - 1) {
     LOG(WARNING) << "Currently, only using all keyframes in every optimization iteration will work properly. Deactivated keyframes will not be used for surfel descriptor optimization, potentially leaving some surfel descriptors in a bad state.";
   }
   
   // Initialize surfel active states.
-  cudaMemsetAsync(active_surfels_->ToCUDA().address(), 0, surfels_size_ * sizeof(u8), stream);
+  cudaMemsetAsync(active_surfels_->ToCUDA().address(), 0, surfels_size_ * sizeof(u8), stream);//cuda自带的函数！！！！！
   
-  if (kDebugVerifySurfelCount) {
-    DebugVerifySurfelCount(stream, surfel_count_, surfels_size_, *surfels_);
-  }
+  //默认不会进入这个条件！！！！ debug相关的函数不用看！！！！！
+  // if (kDebugVerifySurfelCount) {
+  //   DebugVerifySurfelCount(stream, surfel_count_, surfels_size_, *surfels_);
+  // }
   
   // Perform BA iterations.
+  //下面的代码都被这个大的for循环包裹着!!!!!!!!!!!!!!!!!!!!!!!!!!
   for (int iteration = 0; iteration < max_iterations; ++ iteration) {
-    if (progress_function && !progress_function(iteration)) {
+    if (progress_function && !progress_function(iteration)) {//从外部传入的函数！！！！！
       break;
     }
     if (num_iterations_done) {
@@ -366,32 +373,33 @@ void DirectBA::BundleAdjustmentAlternating(
         }
       }
       
-      DetermineCovisibleActiveKeyframes();
+      DetermineCovisibleActiveKeyframes();//搜索 void DirectBA::DetermineCovisibleActiveKeyframes() {
       
       Unlock();
     }
     
     // Debug print?
     constexpr bool kPrintKeyframeActivationStates = false;
-    if (kPrintKeyframeActivationStates) {
-      int debug_active_count = 0;
-      int debug_covisible_active_count = 0;
-      int debug_inactive_count = 0;
-      for (shared_ptr<Keyframe>& keyframe : keyframes_) {
-        if (!keyframe) {
-          continue;
-        }
-        if (keyframe->activation() == Keyframe::Activation::kActive) {
-          ++ debug_active_count;
-        } else if (keyframe->activation() == Keyframe::Activation::kCovisibleActive) {
-          ++ debug_covisible_active_count;
-        } else if (keyframe->activation() == Keyframe::Activation::kInactive) {
-          ++ debug_inactive_count;
-        }
-      }
+    //下面这个只是用来打印debug信息的，不用看！！！！
+    // if (kPrintKeyframeActivationStates) {
+    //   int debug_active_count = 0;
+    //   int debug_covisible_active_count = 0;
+    //   int debug_inactive_count = 0;
+    //   for (shared_ptr<Keyframe>& keyframe : keyframes_) {
+    //     if (!keyframe) {
+    //       continue;
+    //     }
+    //     if (keyframe->activation() == Keyframe::Activation::kActive) {
+    //       ++ debug_active_count;
+    //     } else if (keyframe->activation() == Keyframe::Activation::kCovisibleActive) {
+    //       ++ debug_covisible_active_count;
+    //     } else if (keyframe->activation() == Keyframe::Activation::kInactive) {
+    //       ++ debug_inactive_count;
+    //     }
+    //   }
       
-      LOG(INFO) << "[iteration " << iteration << "] active: " << debug_active_count << ", covis-active: " << debug_covisible_active_count << ", inactive: " << debug_inactive_count;
-    }
+    //   LOG(INFO) << "[iteration " << iteration << "] active: " << debug_active_count << ", covis-active: " << debug_covisible_active_count << ", inactive: " << debug_inactive_count;
+    // }
     
     
     // --- SURFEL CREATION ---
@@ -408,7 +416,7 @@ void DirectBA::BundleAdjustmentAlternating(
         }
         if (keyframe->activation() == Keyframe::Activation::kActive &&
             keyframe->last_active_in_ba_iteration() != fixed_ba_iteration_count) {
-          keyframe->SetLastActiveInBAIteration(fixed_ba_iteration_count);
+          keyframe->SetLastActiveInBAIteration(fixed_ba_iteration_count);//非常小的一个功能函数，只是进行了一个简单的赋值！！！！
           
           // This keyframe has become active the first time within this BA
           // iteration block.
@@ -424,7 +432,8 @@ void DirectBA::BundleAdjustmentAlternating(
       for (u32 keyframe_id : keyframes_with_new_surfels) {
         // TODO: Would it be better for performance to group all keyframes
         //       together that become active in an iteration?
-        CreateSurfelsForKeyframe(stream, /* filter_new_surfels */ true, keyframes_[keyframe_id]);
+        //搜索 void DirectBA::CreateSurfelsForKeyframe(
+        CreateSurfelsForKeyframe(stream, /* filter_new_surfels */ true, keyframes_[keyframe_id]);//!!!!!!!!!!!!!!!!!!!!!!!
       }
       cudaEventRecord(ba_surfel_creation_post_event_, stream);
     }
@@ -434,12 +443,11 @@ void DirectBA::BundleAdjustmentAlternating(
     cudaEventRecord(ba_surfel_activation_pre_event_, stream);
     
     // Set new surfels to active | have_been_active.
-    if (optimize_geometry &&
-        surfels_size_ > old_surfels_size) {
+    if (optimize_geometry && surfels_size_ > old_surfels_size) {
       cudaMemsetAsync(active_surfels_->ToCUDA().address() + old_surfels_size,
                       kSurfelActiveFlag,
                       (surfels_size_ - old_surfels_size) * sizeof(u8),
-                      stream);
+                      stream);//cuda自带的函数！！！！！
     }
     
     // Update activation state of old surfels.
@@ -458,7 +466,8 @@ void DirectBA::BundleAdjustmentAlternating(
     
     cudaEventRecord(ba_surfel_activation_post_event_, stream);
     
-    if (kDebugVerifySurfelCount) {
+    //debug相关的 可以先暂时不看！！！
+    // if (kDebugVerifySurfelCount) {
       DebugVerifySurfelCount(stream, surfel_count_, surfels_size_, *surfels_);
     }
     
@@ -466,6 +475,7 @@ void DirectBA::BundleAdjustmentAlternating(
     // --- GEOMETRY OPTIMIZATION ---
     if (optimize_geometry) {
       cudaEventRecord(ba_geometry_optimization_pre_event_, stream);
+      //搜索 void OptimizeGeometryIterationCUDA(
       OptimizeGeometryIterationCUDA(
           stream,
           use_depth_residuals_,
@@ -476,7 +486,7 @@ void DirectBA::BundleAdjustmentAlternating(
           keyframes_,
           surfels_size_,
           *surfels_,
-          *active_surfels_);
+          *active_surfels_);//非常重要的函数！！！！！！！！！！！！！
       cudaEventRecord(ba_geometry_optimization_post_event_, stream);
       
       if (kDebugVerifySurfelCount) {
@@ -510,13 +520,14 @@ void DirectBA::BundleAdjustmentAlternating(
             surfels_.get(),
             supporting_surfels,
             &surfel_count,
-            &deleted_count_buffer_);
+            &deleted_count_buffer_);//比较重要的功能函数！！！！！！！！！！！！！！！！！！
       }
       cudaEventRecord(ba_surfel_merge_post_event_, stream);
       Lock();
       surfel_count_ = surfel_count;
       Unlock();
       
+      //默认不进入这个条件
       if (kDebugVerifySurfelCount) {
         DebugVerifySurfelCount(stream, surfel_count_, surfels_size_, *surfels_);
       }
@@ -527,6 +538,7 @@ void DirectBA::BundleAdjustmentAlternating(
         // TODO: Only run on the new surfels if possible
         
         u32 surfels_size = surfels_size_;
+        //!!!!!!!!!!!!!!!!!!
         CompactSurfelsCUDA(stream, &free_spots_temp_storage_, &free_spots_temp_storage_bytes_, surfel_count_, &surfels_size, &surfels_->ToCUDA(), &active_surfels_->ToCUDA());
         Lock();
         surfels_size_ = surfels_size;
@@ -537,7 +549,7 @@ void DirectBA::BundleAdjustmentAlternating(
       if (kDebugVerifySurfelCount) {
         DebugVerifySurfelCount(stream, surfel_count_, surfels_size_, *surfels_);
       }
-    }
+    }//end if (do_surfel_updates) {
     
     
     // --- POSE OPTIMIZATION ---
@@ -558,7 +570,7 @@ void DirectBA::BundleAdjustmentAlternating(
                           keyframe->normals_buffer(),
                           keyframe->color_texture(),
                           &global_T_frame_estimate,
-                          true);
+                          true);//非常重要的函数！！！！！！！！！！！！！！！！！！！！这个函数的实现就在这个文件中
         SE3f pose_difference = keyframe->frame_T_global() * global_T_frame_estimate;
         bool frame_moved = !IsScale1PoseEstimationConverged(pose_difference.log());
         
@@ -574,56 +586,57 @@ void DirectBA::BundleAdjustmentAlternating(
         Unlock();
       }
       cudaEventRecord(ba_pose_optimization_post_event_, stream);
-    }
+    }//end optimize_poses
     
-    if (kDebugVerifySurfelCount) {
-      DebugVerifySurfelCount(stream, surfel_count_, surfels_size_, *surfels_);
-    }
+    //debug相关可以不看！！！！！！
+    // if (kDebugVerifySurfelCount) {
+    //   DebugVerifySurfelCount(stream, surfel_count_, surfels_size_, *surfels_);
+    // }
     
     
     // --- INTRINSICS OPTIMIZATION ---
-    bool optimize_intrinsics =
-        optimize_depth_intrinsics || optimize_color_intrinsics;
-    if (optimize_intrinsics) {
-      cudaEventRecord(ba_intrinsics_optimization_pre_event_, stream);
-      PinholeCamera4f out_color_camera;
-      PinholeCamera4f out_depth_camera;
-      float out_a = depth_params_.a;
+    //内参优化的代码暂时不用看！！！！！
+    bool optimize_intrinsics = optimize_depth_intrinsics || optimize_color_intrinsics;
+    // if (optimize_intrinsics) {
+    //   cudaEventRecord(ba_intrinsics_optimization_pre_event_, stream);
+    //   PinholeCamera4f out_color_camera;
+    //   PinholeCamera4f out_depth_camera;
+    //   float out_a = depth_params_.a;
       
-      OptimizeIntrinsicsCUDA(
-          stream,
-          optimize_depth_intrinsics,
-          optimize_color_intrinsics,
-          keyframes_,
-          color_camera_,
-          depth_camera_,
-          depth_params_,
-          surfels_size_,
-          *surfels_,
-          &out_color_camera,
-          &out_depth_camera,
-          &out_a,
-          &cfactor_buffer_,
-          &intrinsics_optimization_helper_buffers_);
+    //   OptimizeIntrinsicsCUDA(
+    //       stream,
+    //       optimize_depth_intrinsics,
+    //       optimize_color_intrinsics,
+    //       keyframes_,
+    //       color_camera_,
+    //       depth_camera_,
+    //       depth_params_,
+    //       surfels_size_,
+    //       *surfels_,
+    //       &out_color_camera,
+    //       &out_depth_camera,
+    //       &out_a,
+    //       &cfactor_buffer_,
+    //       &intrinsics_optimization_helper_buffers_);
       
-      if (surfels_size_ > 0) {
-        Lock();
-        if (optimize_color_intrinsics) {
-          color_camera_ = out_color_camera;
-        }
-        if (optimize_depth_intrinsics) {
-          depth_camera_ = out_depth_camera;
-          depth_params_.a = out_a;
-        }
-        Unlock();
-      }
+    //   if (surfels_size_ > 0) {
+    //     Lock();
+    //     if (optimize_color_intrinsics) {
+    //       color_camera_ = out_color_camera;
+    //     }
+    //     if (optimize_depth_intrinsics) {
+    //       depth_camera_ = out_depth_camera;
+    //       depth_params_.a = out_a;
+    //     }
+    //     Unlock();
+    //   }
       
-      cudaEventRecord(ba_intrinsics_optimization_post_event_, stream);
+    //   cudaEventRecord(ba_intrinsics_optimization_post_event_, stream);
       
-      if (intrinsics_updated_callback_) {
-        intrinsics_updated_callback_();
-      }
-    }
+    //   if (intrinsics_updated_callback_) {
+    //     intrinsics_updated_callback_();
+    //   }
+    // }
     
     
     // --- TIMING ---
@@ -636,62 +649,64 @@ void DirectBA::BundleAdjustmentAlternating(
     cudaEventSynchronize(ba_intrinsics_optimization_post_event_);
     float elapsed_milliseconds;
     
-    if (optimize_geometry && do_surfel_updates) {
-      cudaEventElapsedTime(&elapsed_milliseconds, ba_surfel_creation_pre_event_, ba_surfel_creation_post_event_);
-      Timing::addTime(Timing::getHandle("BA surfel creation"), 0.001 * elapsed_milliseconds);
-      if (timings_stream_) {
-        *timings_stream_ << "BA_surfel_creation " << elapsed_milliseconds << endl;
-      }
-    }
+
+    //下面都是统计时间的代码不用看<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    // if (optimize_geometry && do_surfel_updates) {
+    //   cudaEventElapsedTime(&elapsed_milliseconds, ba_surfel_creation_pre_event_, ba_surfel_creation_post_event_);
+    //   Timing::addTime(Timing::getHandle("BA surfel creation"), 0.001 * elapsed_milliseconds);
+    //   if (timings_stream_) {
+    //     *timings_stream_ << "BA_surfel_creation " << elapsed_milliseconds << endl;
+    //   }
+    // }
     
-    cudaEventElapsedTime(&elapsed_milliseconds, ba_surfel_activation_pre_event_, ba_surfel_activation_post_event_);
-    Timing::addTime(Timing::getHandle("BA surfel activation"), 0.001 * elapsed_milliseconds);
-    if (timings_stream_) {
-      *timings_stream_ << "BA_surfel_activation " << elapsed_milliseconds << endl;
-    }
+    // cudaEventElapsedTime(&elapsed_milliseconds, ba_surfel_activation_pre_event_, ba_surfel_activation_post_event_);
+    // Timing::addTime(Timing::getHandle("BA surfel activation"), 0.001 * elapsed_milliseconds);
+    // if (timings_stream_) {
+    //   *timings_stream_ << "BA_surfel_activation " << elapsed_milliseconds << endl;
+    // }
     
-    if (optimize_geometry) {
-      cudaEventElapsedTime(&elapsed_milliseconds, ba_geometry_optimization_pre_event_, ba_geometry_optimization_post_event_);
-      Timing::addTime(Timing::getHandle("BA geometry optimization"), 0.001 * elapsed_milliseconds);
-      if (timings_stream_) {
-        *timings_stream_ << "BA_geometry_optimization " << elapsed_milliseconds << endl;
-      }
-    }
+    // if (optimize_geometry) {
+    //   cudaEventElapsedTime(&elapsed_milliseconds, ba_geometry_optimization_pre_event_, ba_geometry_optimization_post_event_);
+    //   Timing::addTime(Timing::getHandle("BA geometry optimization"), 0.001 * elapsed_milliseconds);
+    //   if (timings_stream_) {
+    //     *timings_stream_ << "BA_geometry_optimization " << elapsed_milliseconds << endl;
+    //   }
+    // }
     
-    if (do_surfel_updates) {
-      cudaEventElapsedTime(&elapsed_milliseconds, ba_surfel_merge_pre_event_, ba_surfel_merge_post_event_);
-      Timing::addTime(Timing::getHandle("BA initial surfel merge"), 0.001 * elapsed_milliseconds);
-      if (timings_stream_) {
-        *timings_stream_ << "BA_initial_surfel_merge " << elapsed_milliseconds << endl;
-      }
+    // if (do_surfel_updates) {
+    //   cudaEventElapsedTime(&elapsed_milliseconds, ba_surfel_merge_pre_event_, ba_surfel_merge_post_event_);
+    //   Timing::addTime(Timing::getHandle("BA initial surfel merge"), 0.001 * elapsed_milliseconds);
+    //   if (timings_stream_) {
+    //     *timings_stream_ << "BA_initial_surfel_merge " << elapsed_milliseconds << endl;
+    //   }
       
-      cudaEventElapsedTime(&elapsed_milliseconds, ba_surfel_compaction_pre_event_, ba_surfel_compaction_post_event_);
-      Timing::addTime(Timing::getHandle("BA surfel compaction"), 0.001 * elapsed_milliseconds);
-      if (timings_stream_) {
-        *timings_stream_ << "BA_surfel_compaction " << elapsed_milliseconds << endl;
-      }
-    }
+    //   cudaEventElapsedTime(&elapsed_milliseconds, ba_surfel_compaction_pre_event_, ba_surfel_compaction_post_event_);
+    //   Timing::addTime(Timing::getHandle("BA surfel compaction"), 0.001 * elapsed_milliseconds);
+    //   if (timings_stream_) {
+    //     *timings_stream_ << "BA_surfel_compaction " << elapsed_milliseconds << endl;
+    //   }
+    // }
     
-    if (optimize_poses) {
-      cudaEventElapsedTime(&elapsed_milliseconds, ba_pose_optimization_pre_event_, ba_pose_optimization_post_event_);
-      Timing::addTime(Timing::getHandle("BA pose optimization"), 0.001 * elapsed_milliseconds);
-      if (timings_stream_) {
-        *timings_stream_ << "BA_pose_optimization " << elapsed_milliseconds << endl;
-      }
-    }
+    // if (optimize_poses) {
+    //   cudaEventElapsedTime(&elapsed_milliseconds, ba_pose_optimization_pre_event_, ba_pose_optimization_post_event_);
+    //   Timing::addTime(Timing::getHandle("BA pose optimization"), 0.001 * elapsed_milliseconds);
+    //   if (timings_stream_) {
+    //     *timings_stream_ << "BA_pose_optimization " << elapsed_milliseconds << endl;
+    //   }
+    // }
     
-    if (optimize_intrinsics) {
-      cudaEventElapsedTime(&elapsed_milliseconds, ba_intrinsics_optimization_pre_event_, ba_intrinsics_optimization_post_event_);
-      Timing::addTime(Timing::getHandle("BA intrinsics optimization"), 0.001 * elapsed_milliseconds);
-      if (timings_stream_) {
-        *timings_stream_ << "BA_intrinsics_optimization " << elapsed_milliseconds << endl;
-      }
-    }
+    // if (optimize_intrinsics) {
+    //   cudaEventElapsedTime(&elapsed_milliseconds, ba_intrinsics_optimization_pre_event_, ba_intrinsics_optimization_post_event_);
+    //   Timing::addTime(Timing::getHandle("BA intrinsics optimization"), 0.001 * elapsed_milliseconds);
+    //   if (timings_stream_) {
+    //     *timings_stream_ << "BA_intrinsics_optimization " << elapsed_milliseconds << endl;
+    //   }
+    // }
+    //统计时间结束>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     
     
     // --- CONVERGENCE ---
-    if (iteration >= min_iterations - 1 &&
-        (num_converged == keyframes_.size() || !optimize_poses)) {
+    if (iteration >= min_iterations - 1 && (num_converged == keyframes_.size() || !optimize_poses)) {
       // All frames are inactive. Early exit.
 //       LOG(INFO) << "Early global BA exit after " << (iteration + 1) << " iterations";
       if (converged) {
@@ -713,7 +728,8 @@ void DirectBA::BundleAdjustmentAlternating(
     // Use the covisibility lists to determine which kInactive frames must be
     // changed to kCovisibleActive.
     Lock();
-    DetermineCovisibleActiveKeyframes();
+    //搜索 void DirectBA::DetermineCovisibleActiveKeyframes() {
+    DetermineCovisibleActiveKeyframes();//是个很小的功能函数！！！！！！！
     Unlock();
   }
   
@@ -723,9 +739,8 @@ void DirectBA::BundleAdjustmentAlternating(
   
   
   if (increase_ba_iteration_count) {
-    PerformBASchemeEndTasks(
-        stream,
-        do_surfel_updates);
+    //非常重的函数！！！！！！！！！！！！！
+    PerformBASchemeEndTasks(stream, do_surfel_updates);//搜索 void DirectBA::PerformBASchemeEndTasks
     
     ++ ba_iteration_count_;
     
